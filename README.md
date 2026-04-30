@@ -21,11 +21,32 @@ A working ERC-721 mint dApp for the "Larvae" 10,000-PFP collection on Base mainn
 - Owner control panel at `/admin` for setMintActive, setMintPrice, setClawdPerFreeMint, setBaseURI, setRoyalty, withdraw
 - 27 passing Foundry tests covering all mint paths and access control
 
-## What is NOT delivered (and what the client must supply)
+## What is NOT delivered: art generation must be commissioned separately
 
-This build does NOT include the 10,000 PFP image artworks. The bot has no image-generation pipeline and no rights to reproduce CryptoPunks/Larva-Lads-style artwork.
+**Important: this build intentionally stops at the contract + mint dApp. Generating the 10,000 PFP artworks and their metadata is a substantial standalone project that needs its own commission, separate from this build job.**
 
-To complete the collection, the client must supply:
+### Why this is its own job
+
+Producing a 10,000-PFP collection at the spec quality (24x24 pixel art upscaled to 1000x1000, 56-color CryptoPunks palette + bio-luminescent accents, 5 base larva types with the requested rarity distribution, multi-trait composition with trait pools for headwear/eyes/facial/mouth/accessories/hair/special, rarity tiers, glow effects on legendary) is itself a multi-week, multi-discipline project:
+
+1. **Trait art creation.** Every distinct trait — every hat, every eye type, every special — has to be hand-drawn or commissioned as a pixel-art asset that matches the palette and outline rules. CryptoPunks-style collections typically use ~80-150 individual trait sprites across categories. Reproducing CryptoPunks' specific traits is also a copyright/IP concern; this collection should use original trait art that is "in the spirit of" the reference, not a copy.
+2. **Composition pipeline.** Once trait sprites exist, an automated pipeline composites them per-token following the rarity weights, dedupe rules, and trait-conflict rules (e.g. "no glasses + VR helmet at the same time"). This is a custom script written against the specific trait set.
+3. **Provenance + commitment.** A reveal-quality drop typically commits to the metadata-CID hash before mint opens (provenance hash) so collectors know the art was not curated post-mint. That requires the full collection to exist before mint goes live.
+4. **Metadata generation.** 10,000 JSONs in OpenSea schema, one per token, with the right attributes array, image CID, name, description.
+5. **IPFS pinning.** Pin both image directory and metadata directory to a durable IPFS service (Pinata, NFT.Storage, bgipfs, etc.) — long-lived pinning, not free-tier ephemeral storage.
+6. **QA.** Eyeball every legendary, spot-check trait counts vs. the rarity table, verify metadata integrity.
+
+This is typically a separate engagement with a pixel artist and a composition engineer. **Estimate scope realistically before commissioning** — assume weeks of work, not hours.
+
+### What this bot can build
+
+Once the artwork + metadata exist and are pinned to IPFS, this contract is ready to ship with no additional code work. Specifically the bot CAN do:
+- Compose existing trait sprites if the client provides them (a follow-up job)
+- Generate metadata JSONs from a trait-table CSV the artist produces
+- Upload finished artwork + metadata to bgipfs and produce the baseURI string
+- Wire up provenance hashing if the client wants reveal-style mechanics
+
+### What the client must supply to go live with this contract
 
 1. **10,000 pixel-art PNG images** matching the spec (24x24 upscaled to 1000x1000, 56-color CryptoPunks palette + bio-luminescent accents, transparent background, sharp pixels, 5 base larva types with distribution: Male 60% / Female 25% / Zombie 8% / Ape 5% / Alien 2%, traits in pools as described).
 2. **10,000 metadata JSON files** following OpenSea schema (`name`, `description`, `image`, `attributes` array). One JSON per token id, named `0.json` ... `9999.json`.
