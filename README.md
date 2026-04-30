@@ -1,5 +1,9 @@
 # Larvae — Job 82 Build (Partial Delivery)
 
+## Live deployment
+- Live URL: https://bafybeihj3ogc2y7l2ysdhctbwmzaxsleu4vp2nu633dwlrdlyxaqiz7i3q.ipfs.community.bgipfs.com/
+- Admin panel: https://bafybeihj3ogc2y7l2ysdhctbwmzaxsleu4vp2nu633dwlrdlyxaqiz7i3q.ipfs.community.bgipfs.com/admin/
+
 ## What this is
 A working ERC-721 mint dApp for the "Larvae" 10,000-PFP collection on Base mainnet, deployed and verified.
 
