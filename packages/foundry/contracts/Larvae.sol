@@ -15,6 +15,10 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
  *         capped at 20 free mints per wallet (lifetime). Additional mints cost
  *         `mintPrice` per token. Total supply is hard-capped at 10,000.
  */
+/// @notice KNOWN LIMITATION: free-mint quota uses live `clawdToken.balanceOf(msg.sender)`.
+/// An attacker can flash-borrow CLAWD, mint up to 20 free per wallet, and repay in the same tx.
+/// To mitigate, owner SHOULD pre-mint to a known holder snapshot OR adopt a Merkle-allowlist
+/// upgrade before enabling public mint. Mitigation tracked in repo README "Known Limitations".
 contract Larvae is ERC721, ERC2981, Ownable, ReentrancyGuard {
     using Strings for uint256;
 
@@ -24,6 +28,7 @@ contract Larvae is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
     uint256 public constant MAX_SUPPLY = 10_000;
     uint256 public constant MAX_FREE_MINTS_PER_WALLET = 20;
+    uint256 public constant MAX_PER_TX = 50;
 
     // -----------------------------------------------------------------------
     // Storage
@@ -35,6 +40,7 @@ contract Larvae is ERC721, ERC2981, Ownable, ReentrancyGuard {
     uint256 public clawdPerFreeMint;
     uint256 public totalMinted;
     bool public mintActive;
+    uint96 public royaltyBps;
 
     string private _baseTokenURI;
 
@@ -52,6 +58,8 @@ contract Larvae is ERC721, ERC2981, Ownable, ReentrancyGuard {
     error ZeroAmount();
     error WithdrawFailed();
     error RefundFailed();
+    error ZeroAddressRecipient();
+    error ExceedsMaxPerTx();
 
     // -----------------------------------------------------------------------
     // Events
@@ -69,7 +77,7 @@ contract Larvae is ERC721, ERC2981, Ownable, ReentrancyGuard {
     // -----------------------------------------------------------------------
 
     constructor(address initialOwner, IERC20 _clawdToken, string memory initialBaseURI)
-        ERC721("Larvae", "LARVAE")
+        ERC721("Larvae", "LARVA")
         Ownable(initialOwner)
     {
         if (address(_clawdToken) == address(0)) revert ZeroAddressToken();
@@ -80,6 +88,7 @@ contract Larvae is ERC721, ERC2981, Ownable, ReentrancyGuard {
         _baseTokenURI = initialBaseURI;
 
         // Default royalty: 5% to initialOwner.
+        royaltyBps = 500;
         _setDefaultRoyalty(initialOwner, 500);
     }
 
@@ -128,6 +137,7 @@ contract Larvae is ERC721, ERC2981, Ownable, ReentrancyGuard {
     function mint(uint256 quantity) external payable nonReentrant {
         if (!mintActive) revert MintInactive();
         if (quantity == 0) revert ZeroQuantity();
+        if (quantity > MAX_PER_TX) revert ExceedsMaxPerTx();
         if (totalMinted + quantity > MAX_SUPPLY) revert MaxSupplyExceeded();
 
         (uint256 freeUsed, uint256 paid, uint256 cost) = quote(msg.sender, quantity);
@@ -181,10 +191,13 @@ contract Larvae is ERC721, ERC2981, Ownable, ReentrancyGuard {
     }
 
     function setRoyalty(address receiver, uint96 feeBps) external onlyOwner {
+        if (receiver == address(0)) revert ZeroAddressRecipient();
+        royaltyBps = feeBps;
         _setDefaultRoyalty(receiver, feeBps);
     }
 
     function withdraw(address payable to) external onlyOwner nonReentrant {
+        if (to == address(0)) revert ZeroAddressRecipient();
         uint256 balance = address(this).balance;
         (bool ok,) = to.call{ value: balance }("");
         if (!ok) revert WithdrawFailed();
@@ -210,5 +223,16 @@ contract Larvae is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
     function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC2981) returns (bool) {
         return super.supportsInterface(interfaceId);
+    }
+
+    /// @dev Royalty receiver follows ownership. When ownership transfers to a non-zero
+    ///      address, default royalty is re-set to the new owner using the current
+    ///      `royaltyBps`. Renounce (newOwner == address(0)) intentionally leaves the
+    ///      existing royalty receiver in place.
+    function _transferOwnership(address newOwner) internal override {
+        super._transferOwnership(newOwner);
+        if (newOwner != address(0)) {
+            _setDefaultRoyalty(newOwner, royaltyBps);
+        }
     }
 }

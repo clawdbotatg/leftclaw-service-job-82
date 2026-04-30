@@ -177,7 +177,7 @@ contract LarvaeTest is Test {
 
         // Mint exactly MAX_SUPPLY in batches paid by bob.
         uint256 max = larvae.MAX_SUPPLY();
-        uint256 batch = 500;
+        uint256 batch = larvae.MAX_PER_TX();
         uint256 minted;
         while (minted < max) {
             uint256 q = max - minted < batch ? max - minted : batch;
@@ -322,5 +322,69 @@ contract LarvaeTest is Test {
         assertTrue(larvae.supportsInterface(0x2a55205a));
         // ERC165
         assertTrue(larvae.supportsInterface(0x01ffc9a7));
+    }
+
+    // --------------------------------------------------------------
+    // Audit fixes (Stage 4)
+    // --------------------------------------------------------------
+
+    function test_Symbol_IsLARVA() public view {
+        assertEq(larvae.symbol(), "LARVA");
+    }
+
+    function test_Withdraw_ZeroAddressReverts() public {
+        vm.prank(bob);
+        larvae.mint{ value: MINT_PRICE }(1);
+
+        vm.prank(owner);
+        vm.expectRevert(Larvae.ZeroAddressRecipient.selector);
+        larvae.withdraw(payable(address(0)));
+    }
+
+    function test_SetRoyalty_ZeroReceiverReverts() public {
+        vm.prank(owner);
+        vm.expectRevert(Larvae.ZeroAddressRecipient.selector);
+        larvae.setRoyalty(address(0), 250);
+    }
+
+    function test_Mint_ExceedsMaxPerTxReverts() public {
+        uint256 maxPerTx = larvae.MAX_PER_TX();
+        uint256 q = maxPerTx + 1;
+        vm.deal(bob, q * MINT_PRICE);
+        vm.prank(bob);
+        vm.expectRevert(Larvae.ExceedsMaxPerTx.selector);
+        larvae.mint{ value: q * MINT_PRICE }(q);
+    }
+
+    function test_TransferOwnership_UpdatesRoyaltyReceiver() public {
+        // Sanity: initial royalty receiver is owner with 5% (500 bps).
+        (address receiverBefore, uint256 amountBefore) = larvae.royaltyInfo(0, 10_000);
+        assertEq(receiverBefore, owner);
+        assertEq(amountBefore, 500);
+
+        // Transfer ownership to alice.
+        vm.prank(owner);
+        larvae.transferOwnership(alice);
+        assertEq(larvae.owner(), alice);
+
+        // Royalty receiver now follows the new owner; bps unchanged.
+        (address receiverAfter, uint256 amountAfter) = larvae.royaltyInfo(0, 10_000);
+        assertEq(receiverAfter, alice);
+        assertEq(amountAfter, 500);
+    }
+
+    function test_TransferOwnership_PreservesCurrentRoyaltyBps() public {
+        // Owner changes royalty bps to 250 (2.5%) first.
+        vm.prank(owner);
+        larvae.setRoyalty(owner, 250);
+        assertEq(larvae.royaltyBps(), 250);
+
+        // Then transfers ownership; new receiver should use 250 bps.
+        vm.prank(owner);
+        larvae.transferOwnership(alice);
+
+        (address receiver, uint256 amount) = larvae.royaltyInfo(0, 10_000);
+        assertEq(receiver, alice);
+        assertEq(amount, 250);
     }
 }
