@@ -1,16 +1,20 @@
-
 import type { Metadata } from "next";
 
+const rawProd = process.env.NEXT_PUBLIC_PRODUCTION_URL;
+const baseUrl = rawProd
+  ? rawProd.startsWith("http")
+    ? rawProd
+    : `https://${rawProd}`
+  : process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : `http://localhost:${process.env.PORT || 3000}`;
 
-const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-  : `http://localhost:${process.env.PORT || 3000}`;
-const titleTemplate = "%s | Scaffold-ETH 2";
+const titleTemplate = "%s | Larvae";
 
 export const getMetadata = ({
   title,
   description,
-  imageRelativePath = "/thumbnail.jpg",
+  imageRelativePath = "/og-image.jpg",
 }: {
   title: string;
   description: string;
@@ -19,42 +23,24 @@ export const getMetadata = ({
   const imageUrl = `${baseUrl}${imageRelativePath}`;
 
   return {
-  metadataBase: new URL(baseUrl),
-  title: {
-    default: title,
-    template: titleTemplate
-  },
-  description: description,
-  openGraph: {
+    metadataBase: new URL(baseUrl),
     title: {
       default: title,
-      template: titleTemplate
+      template: titleTemplate,
     },
-    description: description,
-    images: [
-      {
-        url: imageUrl
-      }
-    ]
-  },
-  twitter: {
-    title: {
-      default: title,
-      template: titleTemplate
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [imageUrl],
     },
-    description: description,
-    images: [
-      imageUrl
-    ]
-  },
-  icons: {
-    icon: [
-      {
-        url: '/favicon.png',
-        sizes: '32x32',
-        type: 'image/png'
-      }
-    ]
-  }
+    twitter: {
+      title,
+      description,
+      images: [imageUrl],
+    },
+    icons: {
+      icon: [{ url: "/favicon.png", sizes: "32x32", type: "image/png" }],
+    },
+  };
 };
-}

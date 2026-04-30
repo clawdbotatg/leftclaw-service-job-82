@@ -1,15 +1,11 @@
 "use client";
 
 import React, { useRef } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { hardhat } from "viem/chains";
-import { Bars3Icon, BugAntIcon } from "@heroicons/react/24/outline";
-import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
-import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
-
-
+import { Bars3Icon, Cog6ToothIcon, HomeIcon } from "@heroicons/react/24/outline";
+import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
+import { useOutsideClick } from "~~/hooks/scaffold-eth";
 
 type HeaderMenuLink = {
   label: string;
@@ -19,14 +15,15 @@ type HeaderMenuLink = {
 
 export const menuLinks: HeaderMenuLink[] = [
   {
-    label: 'Home',
-    href: '/'
+    label: "Mint",
+    href: "/",
+    icon: <HomeIcon className="h-4 w-4" />,
   },
   {
-    label: 'Debug Contracts',
-    href: '/debug',
-    icon: <BugAntIcon className="h-4 w-4" />
-  }
+    label: "Admin",
+    href: "/admin",
+    icon: <Cog6ToothIcon className="h-4 w-4" />,
+  },
 ];
 
 export const HeaderMenuLinks = () => {
@@ -43,7 +40,7 @@ export const HeaderMenuLinks = () => {
               passHref
               className={`${
                 isActive ? "bg-secondary shadow-md" : ""
-              } hover:bg-secondary hover:shadow-md focus:!bg-secondary active:!text-neutral py-1.5 px-3 text-sm rounded-full gap-2 grid grid-flow-col`}
+              } hover:bg-secondary hover:shadow-md focus:!bg-secondary active:!text-neutral py-1.5 px-3 text-sm rounded-md gap-2 grid grid-flow-col`}
             >
               {icon}
               <span>{label}</span>
@@ -59,9 +56,6 @@ export const HeaderMenuLinks = () => {
  * Site header
  */
 export const Header = () => {
-  const { targetNetwork } = useTargetNetwork();
-  const isLocalNetwork = targetNetwork.id === hardhat.id;
-
   const burgerMenuRef = useRef<HTMLDetailsElement>(null);
   useOutsideClick(burgerMenuRef, () => {
     burgerMenuRef?.current?.removeAttribute("open");
@@ -83,13 +77,18 @@ export const Header = () => {
             <HeaderMenuLinks />
           </ul>
         </details>
-        <Link href="/" passHref className="hidden lg:flex items-center gap-2 ml-4 mr-6 shrink-0">
-          <div className="flex relative w-10 h-10">
-            <Image alt="SE2 logo" className="cursor-pointer" fill src="/logo.svg" />
+        <Link href="/" passHref className="hidden lg:flex items-center gap-3 ml-4 mr-6 shrink-0">
+          <div className="larva-mini" aria-hidden>
+            <span />
+            <span />
+            <span />
+            <span />
           </div>
           <div className="flex flex-col">
-            <span className="font-bold leading-tight">Scaffold-ETH</span>
-            <span className="text-xs">Ethereum dev stack</span>
+            <span className="font-bold leading-tight glow-text" style={{ fontFamily: "var(--font-pixel-display)" }}>
+              LARVAE
+            </span>
+            <span className="text-xs opacity-70">CLAWD-gated mint on Base</span>
           </div>
         </Link>
         <ul className="hidden lg:flex lg:flex-nowrap menu menu-horizontal px-1 gap-2">
@@ -98,8 +97,28 @@ export const Header = () => {
       </div>
       <div className="navbar-end grow mr-4">
         <RainbowKitCustomConnectButton />
-        {isLocalNetwork && <FaucetButton />}
       </div>
+      <style jsx>{`
+        .larva-mini {
+          display: grid;
+          grid-template-columns: repeat(2, 12px);
+          grid-template-rows: repeat(2, 12px);
+          gap: 2px;
+        }
+        .larva-mini span {
+          background: #00ff9d;
+          box-shadow: 0 0 6px rgba(0, 255, 157, 0.8);
+          border-radius: 2px;
+        }
+        .larva-mini span:nth-child(2) {
+          background: #7d5fff;
+          box-shadow: 0 0 6px rgba(125, 95, 255, 0.8);
+        }
+        .larva-mini span:nth-child(3) {
+          background: #7d5fff;
+          box-shadow: 0 0 6px rgba(125, 95, 255, 0.8);
+        }
+      `}</style>
     </div>
   );
 };

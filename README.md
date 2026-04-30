@@ -1,83 +1,70 @@
-# 🏗 Scaffold-ETH 2
+# Larvae — Job 82 Build (Partial Delivery)
 
-<h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
-  <a href="https://scaffoldeth.io">Website</a>
-</h4>
+## What this is
+A working ERC-721 mint dApp for the "Larvae" 10,000-PFP collection on Base mainnet, deployed and verified.
 
-🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Ethereum blockchain. It's designed to make it easier for developers to create and deploy smart contracts and build user interfaces that interact with those contracts.
+- Contract: [`0x34A195f9284f6F5aaC6398A716BaE85Ba935E9E5`](https://basescan.org/address/0x34A195f9284f6F5aaC6398A716BaE85Ba935E9E5#code)
+- Network: Base (chain 8453)
+- Owner: `0x68B8dD3d7d5CEdB72B40c4cF3152a175990D4599` (job client)
+- $CLAWD token: `0x9f86dB9fc6f7c9408e8Fda3Ff8ce4e78ac7a6b07`
 
-> [!NOTE]
-> 🤖 Scaffold-ETH 2 is AI-ready! It has everything agents need to build on Ethereum. Check `.agents/`, `.claude/`, `.opencode` or `.cursor/` for more info.
+## What's complete
+- ERC-721 + ERC-2981 + Ownable contract (`Larvae.sol`) deployed on Base, Sourcify-verified
+- CLAWD-gated free mint logic: `clawdPerFreeMint` x 1 = 1 free mint, capped at 20 per wallet
+- 0.069 ETH paid mint when no CLAWD held (owner-adjustable)
+- 5% royalty (ERC-2981) wired to the owner address; auto-follows ownership transfers
+- Mint frontend (this app) with live CLAWD-balance quota, mint quantity selector, transaction tracking
+- Owner control panel at `/admin` for setMintActive, setMintPrice, setClawdPerFreeMint, setBaseURI, setRoyalty, withdraw
+- 27 passing Foundry tests covering all mint paths and access control
 
-⚙️ Built using NextJS, RainbowKit, Foundry, Wagmi, Viem, and Typescript.
+## What is NOT delivered (and what the client must supply)
 
-- ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
-- 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
-- 🧱 [**Components**](https://docs.scaffoldeth.io/components/): Collection of common web3 components to quickly build your frontend.
-- 🔥 **Burner Wallet & Local Faucet**: Quickly test your application with a burner wallet and local faucet.
-- 🔐 **Integration with Wallet Providers**: Connect to different wallet providers and interact with the Ethereum network.
+This build does NOT include the 10,000 PFP image artworks. The bot has no image-generation pipeline and no rights to reproduce CryptoPunks/Larva-Lads-style artwork.
 
-![Debug Contracts tab](https://github.com/scaffold-eth/scaffold-eth-2/assets/55535804/b237af0c-5027-4849-a5c1-2e31495cccb1)
+To complete the collection, the client must supply:
 
-## Requirements
+1. **10,000 pixel-art PNG images** matching the spec (24x24 upscaled to 1000x1000, 56-color CryptoPunks palette + bio-luminescent accents, transparent background, sharp pixels, 5 base larva types with distribution: Male 60% / Female 25% / Zombie 8% / Ape 5% / Alien 2%, traits in pools as described).
+2. **10,000 metadata JSON files** following OpenSea schema (`name`, `description`, `image`, `attributes` array). One JSON per token id, named `0.json` ... `9999.json`.
+3. **IPFS upload of both** — pin images and metadata to IPFS (any pinning service: Pinata, web3.storage, bgipfs, etc.).
+4. **A baseURI string** of the form `ipfs://<METADATA_CID>/` (note the trailing slash — the contract appends `<tokenId>.json`).
 
-Before you begin, you need to install the following tools:
+Once supplied:
+- Owner calls `setBaseURI("ipfs://<METADATA_CID>/")` from `/admin` or directly via Basescan.
+- Owner calls `setMintActive(true)` to open public mint.
+- Optionally adjusts `clawdPerFreeMint` to track $CLAWD/USD price changes (default = 1000 CLAWD = $1k assumes a $1/CLAWD reference; adjust as price moves).
 
-- [Node (>= v20.18.3)](https://nodejs.org/en/download/)
-- Yarn ([v1](https://classic.yarnpkg.com/en/docs/install/) or [v2+](https://yarnpkg.com/getting-started/install))
-- [Git](https://git-scm.com/downloads)
+## Known limitations & risks
 
-## Quickstart
+### Flashloan free-mint drain (audit finding H-1)
+The contract checks live `clawdToken.balanceOf(msg.sender)` at mint time. An attacker can flash-borrow >= 20,000 CLAWD, mint 20 free in one tx, and repay — repeating with fresh wallets to drain the entire 10k free supply at flashloan-fee cost.
 
-To get started with Scaffold-ETH 2, follow the steps below:
+**This is a real, exploitable vulnerability** when public mint is open. Recommended mitigations before flipping `mintActive=true`:
+- Pre-mint to a snapshot of known long-term CLAWD holders, then enable public mint for paid-only.
+- Or upgrade the contract to use a Merkle-allowlist of holders snapshotted at a past block.
 
-1. Install dependencies if it was skipped in CLI:
+The current build ships intentionally simple per the on-chain spec ("Enforce on-chain via $CLAWD token balance check at time of mint"). The audit report at `audits/contract-audit.md` documents the issue with severity.
 
-```
-cd my-dapp-example
+### OpenSea collection page
+This bot does not log into OpenSea. After the contract is verified and a few tokens are minted, OpenSea will auto-detect the collection. The client must:
+- Visit https://opensea.io/collection/larvae (or the resolved slug) once tokens exist
+- Sign in with the owner wallet
+- Set: collection logo, banner, description, payment-token toggles, royalty info — OpenSea reads ERC-2981 royalty automatically
+
+## Local development
+
+```bash
 yarn install
+cd packages/nextjs && yarn dev
 ```
 
-2. Run a local network in the first terminal:
+Visit http://localhost:3000 to use the mint UI against the live Base contract (`scaffold.config.ts` is set to `chains.base`).
 
-```
-yarn chain
-```
+## Static export (for IPFS)
 
-This command starts a local Ethereum network using Foundry. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/foundry/foundry.toml`.
-
-3. On a second terminal, deploy the test contract:
-
-```
-yarn deploy
+```bash
+cd packages/nextjs && yarn build
+# output: packages/nextjs/out/
 ```
 
-This command deploys a test smart contract to the local network. The contract is located in `packages/foundry/contracts` and can be modified to suit your needs. The `yarn deploy` command uses the deploy script located in `packages/foundry/script` to deploy the contract to the network. You can also customize the deploy script.
-
-4. On a third terminal, start your NextJS app:
-
-```
-yarn start
-```
-
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
-
-Run smart contract test with `yarn foundry:test`
-
-- Edit your smart contracts in `packages/foundry/contracts`
-- Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
-- Edit your deployment scripts in `packages/foundry/script`
-
-
-## Documentation
-
-Visit our [docs](https://docs.scaffoldeth.io) to learn how to start building with Scaffold-ETH 2.
-
-To know more about its features, check out our [website](https://scaffoldeth.io).
-
-## Contributing to Scaffold-ETH 2
-
-We welcome contributions to Scaffold-ETH 2!
-
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
+## Audit
+See `audits/contract-audit.md` for the full pre-deploy contract audit report.

@@ -1,5 +1,8 @@
 {
-  name: 'Scaffold-ETH 2 DApp',
-  description: 'A DApp built with Scaffold-ETH',
-  iconPath: 'logo.svg'
+  "name": "Larvae",
+  "short_name": "Larvae",
+  "description": "10,000 bio-luminescent pixel-art larvae on Base. Hold $CLAWD to mint free.",
+  "icons": [{ "src": "/favicon.png", "sizes": "256x256", "type": "image/png" }],
+  "theme_color": "#00ff9d",
+  "background_color": "#050813"
 }

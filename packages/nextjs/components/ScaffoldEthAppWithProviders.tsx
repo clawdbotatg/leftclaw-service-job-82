@@ -12,9 +12,7 @@ import { Header } from "~~/components/Header";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 
-
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
-
   return (
     <>
       <div className={`flex flex-col min-h-screen `}>
@@ -44,14 +42,28 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
     setMounted(true);
   }, []);
 
+  // Skip wagmi/RainbowKit providers entirely during SSR/static prerender.
+  // Their connectors and hooks read browser globals at module-load time and
+  // crash during a Next.js static export. We render a minimal shell during
+  // prerender; the full app hydrates on the client.
+  if (!mounted) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center">
+        <div className="pixel-card p-8 max-w-md w-full text-center animate-pulse">
+          <span className="pixel-tag opacity-70">Loading…</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <WagmiProvider config={wagmiConfig}>
-    <QueryClientProvider client={queryClient}>
-    <RainbowKitProvider avatar={BlockieAvatar} theme={mounted ? (isDarkMode ? darkTheme() : lightTheme()) : lightTheme()}>
-      <ProgressBar height="3px" color="#2299dd" />
-      <ScaffoldEthApp>{children}</ScaffoldEthApp>
-    </RainbowKitProvider>
-    </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider avatar={BlockieAvatar} theme={isDarkMode ? darkTheme() : lightTheme()}>
+          <ProgressBar height="3px" color="#00ff9d" />
+          <ScaffoldEthApp>{children}</ScaffoldEthApp>
+        </RainbowKitProvider>
+      </QueryClientProvider>
     </WagmiProvider>
   );
 };
